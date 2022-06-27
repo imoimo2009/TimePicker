@@ -14,10 +14,13 @@
     hidden [bool] $Click
     hidden [object] $Brushes
     hidden [object] $Pens
+    hidden [System.Drawing.Bitmap] $Bmp
+    hidden [System.Drawing.Graphics] $Gp
     hidden [System.Drawing.StringFormat] $Format
     hidden [System.Drawing.Font] $ClkFont
     hidden [System.Drawing.Font] $ClkFont2
     hidden [int] $Mode
+    hidden [object]$Scale
 
     TimePicker() : base() {
         $this.Init()
@@ -30,19 +33,30 @@
         
     }
 
+    TimePicker([int]$left,[int]$top,[int]$width,[int]$height) : base(){
+        $base = [System.Windows.Forms.PictureBox] $this
+        $base.Location = New-Object System.Drawing.Point($left,$top)
+        $this.Init($width,$height)
+        
+    }
+
     hidden Init(){
+        $this.Init(200,240)        
+    }
+
+    hidden Init([int]$width,[int]$height){
         # プロパティ初期化
         $this.Hour = 0
         $this.Minute = 0
         $this.X = 0
         $this.Y = 0
-        $this.Center = @{X = 100 ; Y = 140}
-        $this.DigitalRect = @{Left = 50 ; Top = 10 ; Width = 100 ; Height = 36}
-        $this.BaseSize = 180
-        $this.ValueSize = 25
-        $this.ValueRadius = 73
-        $this.ValueSize2 = 22
-        $this.ValueRadius2 = 47
+        $this.Center = @{X = 400 ; Y = 560}
+        $this.DigitalRect = @{Left = 200 ; Top = 40 ; Width = 400 ; Height = 144}
+        $this.BaseSize = 720
+        $this.ValueSize = 100
+        $this.ValueRadius = 292
+        $this.ValueSize2 = 88
+        $this.ValueRadius2 = 188
         $this.Text = ""
         $this.Brushes = @{
             BG      = New-Object System.Drawing.SolidBrush("#AAAAFF")
@@ -55,26 +69,30 @@
             SLINE   = New-Object System.Drawing.Pen("#FFFFFF")
             RLINE   = New-Object System.Drawing.Pen("#AAAADD")
         }
-        $this.Pens.SLINE.Width = 2
-        $this.Pens.RLINE.Width = 2
+        $this.Pens.SLINE.Width = 8
+        $this.Pens.RLINE.Width = 8
+        $this.Bmp = New-Object System.Drawing.Bitmap(800,960)
+        $this.Gp = [System.Drawing.Graphics]::FromImage($this.Bmp)
         $this.Format = New-Object System.Drawing.StringFormat
         $this.Format.Alignment = [System.Drawing.StringAlignment]::Center
         $this.Format.LineAlignment = [System.Drawing.StringAlignment]::Center
         $this.ClkFont = New-Object System.Drawing.Font(
-            "ＭＳ　ゴシック",12,[System.Drawing.FontStyle]::Bold
+            "ＭＳ　ゴシック",48,[System.Drawing.FontStyle]::Bold
         )
         $this.ClkFont2 = New-Object System.Drawing.Font(
-            "ＭＳ　ゴシック",9,[System.Drawing.FontStyle]::Regular
+            "ＭＳ　ゴシック",36,[System.Drawing.FontStyle]::Regular
         )
+        $this.Scale = $this.GetScale($width,$height,800,960)
         $this.Mode = 0
         # PictureBox初期化
         $base = [System.Windows.Forms.PictureBox] $this
-        $base.Size = New-Object System.Drawing.Size(200,240)
+        $base.Size = New-Object System.Drawing.Size($width,$height)
         $base.BorderStyle = [System.Windows.Forms.BorderStyle]::None
         $base.BackColor = [System.Drawing.Color]::Transparent
         $base.Font = New-Object System.Drawing.Font(
-            "ＭＳ　ゴシック",24,[System.Drawing.FontStyle]::Bold
+            "ＭＳ　ゴシック",80,[System.Drawing.FontStyle]::Bold
         )
+        $base.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
         # イベントハンドラ登録
         $base.Add_Paint({$this.OwnerDraw($_)})
         $base.Add_MouseDown({$this.MouseDown()})
@@ -87,17 +105,17 @@
     hidden OwnerDraw([System.Windows.Forms.PaintEventArgs] $e){
         $base = [System.Windows.Forms.PictureBox] $this
         $c = $this.Center
-        $g = $e.Graphics
-        $rect = $e.ClipRectangle
+        $g = $this.Gp
+        $rect = $this.Bmp.Size
         $cell = @()
         # 背景
         $b = $this.Brushes.BG
-        $g.FillRectangle($b,0,8,$rect.Width,$rect.Height - 16)
-        $g.FillRectangle($b,8,0,$rect.Width - 16,$rect.Height)
-        $g.fillPie($b,0,0,16,16,180,90)
-        $g.fillPie($b,$rect.Width -16,0,16,16,270,90)
-        $g.fillPie($b,0,$rect.Height - 16,16,16,90,90)
-        $g.fillPie($b,$rect.Width - 16,$rect.Height - 16,16,16,0,90)
+        $g.FillRectangle($b,0,32,$rect.Width,$rect.Height - 64)
+        $g.FillRectangle($b,32,0,$rect.Width - 64,$rect.Height)
+        $g.fillPie($b,0,0,64,64,720,360)
+        $g.fillPie($b,$rect.Width - 64,0,64,64,270,90)
+        $g.fillPie($b,0,$rect.Height -64,64,64,90,90)
+        $g.fillPie($b,$rect.Width - 64,$rect.Height - 64,64,64,0,90)
         # アナログ部
         $f = $this.BaseSize
         $g.fillPie($this.Brushes.BASE,$c.X - $f / 2,$c.Y - $f / 2,$f,$f,0,360)
@@ -193,7 +211,7 @@
         foreach($i in $cell){
             $a = $this.GetArcPos($i.radian,$i.radius,$c.X,$c.Y)
             $g.DrawLine($i.pen,$c.X,$c.Y,$a.X,$a.Y)
-            $g.FillPie($i.brush,$c.X - 4,$c.Y - 4,8,8,0,360)
+            $g.FillPie($i.brush,$c.X - 16,$c.Y - 16,32,32,0,360)
             $vs = $i.size
             $g.FillPie($i.brush,$a.X - $vs / 2,$a.Y - $vs / 2,$vs,$vs,0,360)
             $g.DrawString($i.value,$i.font,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
@@ -202,11 +220,11 @@
         $d = $this.DigitalRect
         $g.FillRectangle($this.Brushes.BASE,$d.Left,$d.Top,$d.Width,$d.Height)
         $s = "{0:00}" -f $this.Hour
-        $g.DrawString($s,$base.Font,$bh,$c.X - 22,28,$this.Format)
-        $g.DrawString(":",$base.Font,$this.Brushes.RCELL,$c.X,26,$this.Format)
+        $g.DrawString($s,$base.Font,$bh,$c.X - 88,112,$this.Format)
+        $g.DrawString(":",$base.Font,$this.Brushes.RCELL,$c.X,104,$this.Format)
         $s = "{0:00}" -f $this.Minute
-        $g.DrawString($s,$base.Font,$bm,$c.X + 22,28,$this.Format)
-        $this.SetText()
+        $g.DrawString($s,$base.Font,$bm,$c.X + 88,112,$this.Format)
+        $base.Image = $this.Bmp
     }
 
     # 角度をラジアンに変換
@@ -237,6 +255,10 @@
         return $m
     }
 
+    hidden [object]GetScale([int]$w1,[int]$h1,[int]$w2,[int]$h2){
+        return @{X = ($w2 / $w1) ; Y = ($h2 / $h1)}
+    }
+
     # テキストプロパティを更新
     hidden SetText(){
         $hur = "{0:00}" -f $this.Hour
@@ -257,6 +279,7 @@
             }
         }
         $this.Invalidate()
+        $this.SetText()
     }
  
     # ボタンが離されたとき
@@ -267,8 +290,8 @@
 
     # マウスが移動したとき
     hidden MouseMove([System.Windows.Forms.MouseEventArgs]$e){
-        $this.X = $e.X
-        $this.Y = $e.Y
+        $this.X = $e.X * $this.Scale.X
+        $this.Y = $e.Y * $this.Scale.Y
         $this.Invalidate()
     }
 

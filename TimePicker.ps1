@@ -30,7 +30,7 @@
         
     }
 
-    Init(){
+    hidden Init(){
         # プロパティ初期化
         $this.Hour = 0
         $this.Minute = 0
@@ -84,7 +84,7 @@
     }
 
     # オーナードロー(独自描画)処理
-    OwnerDraw([System.Windows.Forms.PaintEventArgs] $e){
+    hidden OwnerDraw([System.Windows.Forms.PaintEventArgs] $e){
         $base = [System.Windows.Forms.PictureBox] $this
         $c = $this.Center
         $g = $e.Graphics
@@ -210,19 +210,19 @@
     }
 
     # 角度をラジアンに変換
-    [double] Rad([int]$deg){
+    hidden [double] Rad([int]$deg){
         return [math]::PI / 180 * $deg
     }
 
     # 指定角度の円弧座標を返す
-    [object] GetArcPos([double]$rad,[int]$r,[int]$x,[int]$y){
+    hidden [object] GetArcPos([double]$rad,[int]$r,[int]$x,[int]$y){
         $rx = [math]::Cos($rad) * $r + $x
         $ry = [math]::Sin($rad) * $r + $y
         return @{X = $rx ; Y = $ry}
     }
 
     # 2点間の距離を算出
-    [double] GetDistance([int]$x1,[int]$y1,[int]$x2,[int]$y2){
+    hidden [double] GetDistance([int]$x1,[int]$y1,[int]$x2,[int]$y2){
         $xp = [math]::Pow([math]::Abs($x2 - $x1),2)
         $yp = [math]::Pow([math]::Abs($y2 - $y1),2)
         return [math]::Sqrt($xp + $yp)
@@ -245,7 +245,7 @@
     }
 
     # ボタンが押されたとき
-    MouseDown(){
+    hidden MouseDown(){
         $this.Click = $true
         $c = $this.Center
         $d = $this.DigitalRect
@@ -260,20 +260,20 @@
     }
  
     # ボタンが離されたとき
-    MouseUp(){
+    hidden MouseUp(){
         $this.Click = $false
         #$this.Invalidate()
     }
 
     # マウスが移動したとき
-    MouseMove([System.Windows.Forms.MouseEventArgs]$e){
+    hidden MouseMove([System.Windows.Forms.MouseEventArgs]$e){
         $this.X = $e.X
         $this.Y = $e.Y
         $this.Invalidate()
     }
 
     # マウスがコントロールの外に出たとき
-    MouseLeave(){
+    hidden MouseLeave(){
         $this.Invalidate()
     }
 }

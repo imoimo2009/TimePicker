@@ -1,6 +1,7 @@
 ﻿class TimePicker : System.Windows.Forms.PictureBox {
     [int] $Hour
     [int] $Minute
+    [string] $Text
     hidden [int] $X
     hidden [int] $Y
     hidden [object] $Center
@@ -48,6 +49,7 @@
         # プロパティ初期化
         $this.Hour = 0
         $this.Minute = 0
+        $this.Text = "00:00"
         $this.X = 0
         $this.Y = 0
         $this.Center = @{X = 400 ; Y = 560}
@@ -99,7 +101,6 @@
             "ＭＳ　ゴシック",80,[System.Drawing.FontStyle]::Bold
         )
         $base.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
-        $base.Text = "00:00"
         # イベントハンドラ登録
         $base.Add_Paint({$this.OwnerDraw($_)})
         $base.Add_MouseDown({$this.MouseDown()})

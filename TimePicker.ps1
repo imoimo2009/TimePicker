@@ -1,11 +1,11 @@
 ﻿class TimePicker : System.Windows.Forms.PictureBox {
     [int] $Hour
     [int] $Minute
-    [string] $Text
     hidden [int] $X
     hidden [int] $Y
     hidden [object] $Center
     hidden [object] $DigitalRect
+    hidden [object] $CloseBtn
     hidden [int] $BaseSize
     hidden [int] $ValueSize
     hidden [int] $ValueRadius
@@ -52,25 +52,31 @@
         $this.Y = 0
         $this.Center = @{X = 400 ; Y = 560}
         $this.DigitalRect = @{Left = 200 ; Top = 40 ; Width = 400 ; Height = 144}
+        $this.CloseBtn = @{X = 763 ; Y = 37 ; R = 27 ; M = 15}
         $this.BaseSize = 720
         $this.ValueSize = 100
         $this.ValueRadius = 292
         $this.ValueSize2 = 88
         $this.ValueRadius2 = 188
-        $this.Text = ""
         $this.Brushes = @{
             BG      = New-Object System.Drawing.SolidBrush("#AAAAFF")
             BASE    = new-object System.Drawing.SolidBrush("#4444AA")
             CELL    = New-Object System.Drawing.SolidBrush("#6666CC")
             SCELL   = New-Object System.Drawing.SolidBrush("#FFFFFF")
             RCELL   = New-Object System.Drawing.SolidBrush("#AAAADD")
+            CLOSE   = New-Object System.Drawing.SolidBrush("#FFAAAA")
+            SCLOSE  = New-Object System.Drawing.SolidBrush("#FF0000")
         }
         $this.Pens = @{
             SLINE   = New-Object System.Drawing.Pen("#FFFFFF")
             RLINE   = New-Object System.Drawing.Pen("#AAAADD")
+            CLOSE   = New-Object System.Drawing.Pen("#FF0000")
+            SCLOSE  = New-Object System.Drawing.Pen("#FFDDDD")
         }
         $this.Pens.SLINE.Width = 8
         $this.Pens.RLINE.Width = 8
+        $this.Pens.CLOSE.Width = 6
+        $this.Pens.SCLOSE.Width = 6
         $this.Bmp = New-Object System.Drawing.Bitmap(800,960)
         $this.Gp = [System.Drawing.Graphics]::FromImage($this.Bmp)
         $this.Format = New-Object System.Drawing.StringFormat
@@ -93,6 +99,7 @@
             "ＭＳ　ゴシック",80,[System.Drawing.FontStyle]::Bold
         )
         $base.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
+        $base.Text = "00:00"
         # イベントハンドラ登録
         $base.Add_Paint({$this.OwnerDraw($_)})
         $base.Add_MouseDown({$this.MouseDown()})
@@ -112,13 +119,26 @@
         $b = $this.Brushes.BG
         $g.FillRectangle($b,0,32,$rect.Width,$rect.Height - 64)
         $g.FillRectangle($b,32,0,$rect.Width - 64,$rect.Height)
-        $g.fillPie($b,0,0,64,64,720,360)
+        $g.fillPie($b,0,0,64,64,180,90)
         $g.fillPie($b,$rect.Width - 64,0,64,64,270,90)
         $g.fillPie($b,0,$rect.Height -64,64,64,90,90)
         $g.fillPie($b,$rect.Width - 64,$rect.Height - 64,64,64,0,90)
+        # 閉じるボタン
+        $cb = $this.CloseBtn
+        $d = $this.GetDistance($this.X,$this.Y,$cb.X,$cb.Y)
+        if($d -le $cb.R){
+            $b = $this.Brushes.SCLOSE
+            $p = $this.Pens.SCLOSE
+        }else{
+            $b = $this.Brushes.CLOSE
+            $p = $this.Pens.CLOSE
+        }
+        $g.FillPie($b,$cb.X - $cb.R,$cb.Y - $cb.R,$cb.R * 2,$cb.R * 2,0,360)
+        $g.DrawLine($p,$cb.X - $cb.M,$cb.Y - $cb.M,$cb.X + $cb.M,$cb.Y + $cb.M)
+        $g.DrawLine($p,$cb.X - $cb.M,$cb.Y + $cb.M,$cb.X + $cb.M,$cb.Y - $cb.M)
         # アナログ部
         $f = $this.BaseSize
-        $g.fillPie($this.Brushes.BASE,$c.X - $f / 2,$c.Y - $f / 2,$f,$f,0,360)
+        $g.FillPie($this.Brushes.BASE,$c.X - $f / 2,$c.Y - $f / 2,$f,$f,0,360)
         if($this.Mode -eq 0){
             # 時間入力モード
             for($i = 23 ; $i -ge 0 ; $i--){
@@ -148,6 +168,7 @@
                     }
                     if($this.Click){
                         $this.Hour = $i
+                        $this.SetText()
                     }
                 }elseif($i -eq $this.Hour){
                     $cell += @{
@@ -201,6 +222,7 @@
                 }
                 if($this.Click){
                     $this.Minute = $min
+                    $this.SetText()
                 }
             }
             # デジタル切り替え用
@@ -255,6 +277,7 @@
         return $m
     }
 
+    # ビットマップのサイズに対するUIサイズの縮尺を返す
     hidden [object]GetScale([int]$w1,[int]$h1,[int]$w2,[int]$h2){
         return @{X = ($w2 / $w1) ; Y = ($h2 / $h1)}
     }
@@ -266,20 +289,28 @@
         $this.Text = "${hur}:${min}"
     }
 
+    # マウスカーソルが矩形範囲内にあるかを判定
+    hidden [bool]ChkInRect([object]$r){
+        $cx = $this.X -ge $r.Left -and $this.X -lt $r.Left + $r.Width
+        $cy = $this.Y -lt $r.Top + $r.Height -and $this.Y -ge $r.Top
+        $cx = $this.X -ge $r.Left -and $this.X -lt $r.Left + $r.Width
+        return ($cx -and $cy)
+                
+    }
+
     # ボタンが押されたとき
     hidden MouseDown(){
         $this.Click = $true
-        $c = $this.Center
-        $d = $this.DigitalRect
-        if($this.Y -lt $d.Top + $d.Height){
-            if($this.X -lt $c.X){
+        if($this.ChkInRect($this.DigitalRect)){
+            if($this.X -lt $this.Center.X){
                 $this.Mode = 0
             }else{
                 $this.Mode = 1
             }
+        }elseif($this.GetDistance($this.X,$this.Y,$this.CloseBtn.X,$this.CloseBtn.Y) -le $this.CloseBtn.R){
+            $this.Visible = $false
         }
         $this.Invalidate()
-        $this.SetText()
     }
  
     # ボタンが離されたとき

@@ -169,6 +169,7 @@
                     }
                     if($this.Click){
                         $this.Hour = $i
+                        $this.SetText()
                     }
                 }elseif($i -eq $this.Hour){
                     $cell += @{
@@ -222,6 +223,7 @@
                 }
                 if($this.Click){
                     $this.Minute = $min
+                    $this.SetText()
                 }
             }
             # デジタル切り替え用
@@ -300,7 +302,6 @@
     # ボタンが押されたとき
     hidden MouseDown(){
         $this.Click = $true
-        $this.SetText()
         if($this.ChkInRect($this.DigitalRect)){
             if($this.X -lt $this.Center.X){
                 $this.Mode = 0

@@ -1,32 +1,36 @@
 ﻿class TimePicker : System.Windows.Forms.PictureBox {
-    [int] $Hour
-    [int] $Minute
-    [string] $Text
-    hidden [int] $X
-    hidden [int] $Y
-    hidden [object] $Center
-    hidden [object] $DigitalRect
-    hidden [object] $CloseBtn
-    hidden [int] $BaseSize
-    hidden [int] $ValueSize
-    hidden [int] $ValueRadius
-    hidden [int] $ValueSize2
-    hidden [int] $ValueRadius2
-    hidden [bool] $Click
-    hidden [object] $Brushes
-    hidden [object] $Pens
-    hidden [System.Drawing.Bitmap] $Bmp
-    hidden [System.Drawing.Graphics] $Gp
-    hidden [System.Drawing.StringFormat] $Format
-    hidden [System.Drawing.Font] $ClkFont
-    hidden [System.Drawing.Font] $ClkFont2
-    hidden [int] $Mode
-    hidden [object]$Scale
+    # プロパティ定義
+    [int] $Hour                                     # 時間
+    [int] $Minute                                   # 分
+    [string] $Text                                  # 時刻文字列
+    # 非表示プロパティ定義
+    hidden [int] $X                                 # コントロール内のマウス座標X
+    hidden [int] $Y                                 # コントロール内のマウス座標Y
+    hidden [object] $Center                         # 時計盤の原点
+    hidden [object] $DigitalRect                    # デジタル表示部の矩形エリア
+    hidden [object] $CloseBtn                       # 閉じるボタンのパラメータ
+    hidden [int] $BaseRadius                        # 時計盤の半径
+    hidden [int] $ValueSize                         # 時間の円のサイズ(外側)
+    hidden [int] $ValueRadius                       # 時間表示の原点からの距離(外側)
+    hidden [int] $ValueSize2                        # 時間の円のサイズ(外側)
+    hidden [int] $ValueRadius2                      # 時間表示の原点からの距離(外側)
+    hidden [bool] $Click                            # クリックの状態
+    hidden [object] $Brushes                        # ブラシ保存用
+    hidden [object] $Pens                           # ペン保存用
+    hidden [System.Drawing.Bitmap] $Bmp             # ビットマップオブジェクト
+    hidden [System.Drawing.Graphics] $Gp            # ビットマップ描画用グラフィックオブジェクト
+    hidden [System.Drawing.StringFormat] $Format    # 文字列配置
+    hidden [System.Drawing.Font] $ClkFont           # 時計表示のフォント(外側)
+    hidden [System.Drawing.Font] $ClkFont2          # 時計表示のフォント(内側)
+    hidden [int] $Mode                              # 入力モード
+    hidden [object]$Scale                           # 描画スケール
 
+    # コンストラクタ
     TimePicker() : base() {
         $this.Init()
      }
  
+    # コンストラクタ(位置指定)
     TimePicker([int]$left,[int]$top) : base(){
         $base = [System.Windows.Forms.PictureBox] $this
         $base.Location = New-Object System.Drawing.Point($left,$top)
@@ -34,6 +38,7 @@
         
     }
 
+    # コンストラクタ(位置・サイズ指定)
     TimePicker([int]$left,[int]$top,[int]$width,[int]$height) : base(){
         $base = [System.Windows.Forms.PictureBox] $this
         $base.Location = New-Object System.Drawing.Point($left,$top)
@@ -41,10 +46,12 @@
         
     }
 
+    # クラス初期化処理
     hidden Init(){
         $this.Init(200,240)        
     }
 
+    # クラス初期化処理(サイズ指定)
     hidden Init([int]$width,[int]$height){
         # プロパティ初期化
         $this.Hour = 0
@@ -55,10 +62,10 @@
         $this.Center = @{X = 400 ; Y = 560}
         $this.DigitalRect = @{Left = 200 ; Top = 40 ; Width = 400 ; Height = 144}
         $this.CloseBtn = @{X = 763 ; Y = 37 ; R = 27 ; M = 15}
-        $this.BaseSize = 720
-        $this.ValueSize = 100
+        $this.BaseRadius = 360
+        $this.ValueSize = 50
         $this.ValueRadius = 292
-        $this.ValueSize2 = 88
+        $this.ValueSize2 = 40
         $this.ValueRadius2 = 188
         $this.Brushes = @{
             BG      = New-Object System.Drawing.SolidBrush("#AAAAFF")
@@ -126,8 +133,8 @@
         $g.fillPie($b,$rect.Width - 64,$rect.Height - 64,64,64,0,90)
         # 閉じるボタン
         $cb = $this.CloseBtn
-        $d = $this.GetDistance($this.X,$this.Y,$cb.X,$cb.Y)
-        if($d -le $cb.R){
+        $dt = $this.GetDistance($this.X,$this.Y,$cb.X,$cb.Y)
+        if($dt -le $cb.R){
             $b = $this.Brushes.SCLOSE
             $p = $this.Pens.SCLOSE
         }else{
@@ -138,8 +145,8 @@
         $g.DrawLine($p,$cb.X - $cb.M,$cb.Y - $cb.M,$cb.X + $cb.M,$cb.Y + $cb.M)
         $g.DrawLine($p,$cb.X - $cb.M,$cb.Y + $cb.M,$cb.X + $cb.M,$cb.Y - $cb.M)
         # アナログ部
-        $f = $this.BaseSize
-        $g.FillPie($this.Brushes.BASE,$c.X - $f / 2,$c.Y - $f / 2,$f,$f,0,360)
+        $r = $this.BaseRadius
+        $g.FillPie($this.Brushes.BASE,$c.X - $r,$c.Y - $r,$r * 2,$r * 2,0,360)
         if($this.Mode -eq 0){
             # 時間入力モード
             for($i = 23 ; $i -ge 0 ; $i--){
@@ -156,8 +163,8 @@
                 }
                 $rad = $this.Rad(($i % 12) * 30 - 90)
                 $a = $this.GetArcPos($rad,$r,$c.X,$c.Y)
-                $d = $this.GetDistance($this.X,$this.Y,$a.X,$a.Y)
-                if($d -le $vs / 2){
+                $dt = $this.GetDistance($this.X,$this.Y,$a.X,$a.Y)
+                if($dt -le $vs){
                     $cell += @{
                         radian = $rad
                         radius = $r
@@ -182,7 +189,7 @@
                         value = "{0:00}" -f $i
                     }
                 }
-                $g.FillPie($this.Brushes.CELL,$a.X - $vs / 2,$a.Y - $vs / 2,$vs,$vs,0,360)
+                $g.FillPie($this.Brushes.CELL,$a.X - $vs,$a.Y - $vs,$vs * 2,$vs * 2,0,360)
                 $s = "{0:00}" -f $i
                 $g.DrawString($s,$fnt,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
             }
@@ -208,8 +215,8 @@
                 pen = $this.Pens.RLINE
                 value = "{0:00}" -f $this.Minute
             }
-            $d = $this.GetDistance($this.X,$this.Y,$c.X,$c.Y)
-            if($d -le $f / 2){
+            $dt = $this.GetDistance($this.X,$this.Y,$c.X,$c.Y)
+            if($dt -le $this.BaseRadius){
                 $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
                 $min = $this.Rad2Minute($rad)
                 $cell += @{
@@ -236,7 +243,7 @@
             $g.DrawLine($i.pen,$c.X,$c.Y,$a.X,$a.Y)
             $g.FillPie($i.brush,$c.X - 16,$c.Y - 16,32,32,0,360)
             $vs = $i.size
-            $g.FillPie($i.brush,$a.X - $vs / 2,$a.Y - $vs / 2,$vs,$vs,0,360)
+            $g.FillPie($i.brush,$a.X - $vs,$a.Y - $vs,$vs * 2,$vs * 2,0,360)
             $g.DrawString($i.value,$i.font,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
         }
         # デジタル部

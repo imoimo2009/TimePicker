@@ -213,7 +213,6 @@
                 }
             }
             $cell += @{
-                index = 0
                 radian = $this.Rad($this.Minute * 6 - 90)
                 radius = $this.ValueRadius
                 size = $this.ValueSize
@@ -227,7 +226,6 @@
                 $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
                 $min = $this.Rad2Minute($rad)
                 $cell += @{
-                    index = 1
                     radian = $rad
                     radius = $this.ValueRadius
                     size = $this.ValueSize

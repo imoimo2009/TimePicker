@@ -167,7 +167,6 @@
                 $dt = $this.GetDistance($this.X,$this.Y,$a.X,$a.Y)
                 if($dt -le $vs){
                     $param = @{
-                        index = 1
                         radian = $rad
                         radius = $r
                         size = $vs
@@ -182,7 +181,6 @@
                     }
                 }elseif($i -eq $this.Hour){
                     $cell += @{
-                        index = 0
                         radian = $rad
                         radius = $r
                         size = $vs

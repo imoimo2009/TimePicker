@@ -149,6 +149,7 @@
         $g.FillPie($this.Brushes.BASE,$c.X - $r,$c.Y - $r,$r * 2,$r * 2,0,360)
         if($this.Mode -eq 0){
             # 時間入力モード
+            $param = @{}
             for($i = 23 ; $i -ge 0 ; $i--){
                 if($i -lt 12){
                     # 0-11時
@@ -165,7 +166,8 @@
                 $a = $this.GetArcPos($rad,$r,$c.X,$c.Y)
                 $dt = $this.GetDistance($this.X,$this.Y,$a.X,$a.Y)
                 if($dt -le $vs){
-                    $cell += @{
+                    $param = @{
+                        index = 1
                         radian = $rad
                         radius = $r
                         size = $vs
@@ -180,6 +182,7 @@
                     }
                 }elseif($i -eq $this.Hour){
                     $cell += @{
+                        index = 0
                         radian = $rad
                         radius = $r
                         size = $vs
@@ -192,6 +195,9 @@
                 $g.FillPie($this.Brushes.CELL,$a.X - $vs,$a.Y - $vs,$vs * 2,$vs * 2,0,360)
                 $s = "{0:00}" -f $i
                 $g.DrawString($s,$fnt,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
+            }
+            if($param.Count -gt 0){
+                $cell += $param
             }
             # デジタル切り替え用
             $bh = $this.Brushes.SCELL
@@ -207,6 +213,7 @@
                 }
             }
             $cell += @{
+                index = 0
                 radian = $this.Rad($this.Minute * 6 - 90)
                 radius = $this.ValueRadius
                 size = $this.ValueSize
@@ -220,6 +227,7 @@
                 $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
                 $min = $this.Rad2Minute($rad)
                 $cell += @{
+                    index = 1
                     radian = $rad
                     radius = $this.ValueRadius
                     size = $this.ValueSize

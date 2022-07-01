@@ -17,11 +17,12 @@ function TimePicker_VisibleChanged([TimePicker]$own){
 }
 
 function Button_Click(){
-    $tp.Visible = $true
+    $tp.Open()
 }
 
 $tp = New-Object TimePicker(0,0,400,480)
 $tp.Visible = $false
+$tp.AutoNext = $true
 $tp.Add_VisibleChanged({TimePicker_VisibleChanged})
 
 $tb = New-Object System.Windows.Forms.TextBox

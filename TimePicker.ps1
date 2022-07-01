@@ -3,6 +3,7 @@
     [int] $Hour                                     # 時間
     [int] $Minute                                   # 分
     [string] $Text                                  # 時刻文字列
+    [bool] $AutoNext                                # 時刻入力時、自動的に分モードにする
     # 非表示プロパティ定義
     hidden [int] $X                                 # コントロール内のマウス座標X
     hidden [int] $Y                                 # コントロール内のマウス座標Y
@@ -24,6 +25,7 @@
     hidden [System.Drawing.Font] $ClkFont2          # 時計表示のフォント(内側)
     hidden [int] $Mode                              # 入力モード
     hidden [object]$Scale                           # 描画スケール
+    hidden [bool] $Modified                         # 変更されたかどうか
 
     # コンストラクタ
     TimePicker() : base() {
@@ -44,6 +46,16 @@
         $base.Location = New-Object System.Drawing.Point($left,$top)
         $this.Init($width,$height)
         
+    }
+
+    # コントロールを開く
+    Open(){
+        $this.Visible = $true
+    }
+
+    # コントロールを閉じる
+    Close(){
+        $this.Visible = $false
     }
 
     # クラス初期化処理
@@ -99,6 +111,8 @@
         )
         $this.Scale = $this.GetScale($width,$height,800,960)
         $this.Mode = 0
+        $this.AutoNext = $false
+        $this.Modified = $false
         # PictureBox初期化
         $base = [System.Windows.Forms.PictureBox] $this
         $base.Size = New-Object System.Drawing.Size($width,$height)
@@ -110,10 +124,12 @@
         $base.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::StretchImage
         # イベントハンドラ登録
         $base.Add_Paint({$this.OwnerDraw($_)})
-        $base.Add_MouseDown({$this.MouseDown()})
+        $base.Add_MouseDown({$this.MouseDown($_)})
         $base.Add_MouseUp({$this.MouseUp()})
         $base.Add_MouseMove({$this.MouseMove($_)})
         $base.Add_MouseLeave({$this.MouseLeave()})
+        $base.Add_VisibleChanged({$this.VisibleChanged()})
+
     }
 
     # オーナードロー(独自描画)処理
@@ -299,6 +315,7 @@
         $hur = "{0:00}" -f $this.Hour
         $min = "{0:00}" -f $this.Minute
         $this.Text = "${hur}:${min}"
+        $this.Modified = $true
     }
 
     # マウスカーソルが矩形範囲内にあるかを判定
@@ -310,25 +327,52 @@
                 
     }
 
+    hidden SetMode([int]$m){
+        $this.Mode = $m
+        $this.Modified = $false
+    }
+
     # ボタンが押されたとき
-    hidden MouseDown(){
-        $this.Click = $true
-        if($this.ChkInRect($this.DigitalRect)){
-            if($this.X -lt $this.Center.X){
-                $this.Mode = 0
-            }else{
-                $this.Mode = 1
+    hidden MouseDown([System.Windows.Forms.MouseEventArgs]$e){
+        switch($e.Button){
+            ([System.Windows.Forms.MouseButtons]::Left){
+                $this.Click = $true
+                if($this.ChkInRect($this.DigitalRect)){
+                    if($this.X -lt $this.Center.X){
+                        $this.SetMode(0)
+                    }else{
+                        $this.SetMode(1)
+                    }
+                }
+                $this.Invalidate()
+                $this.SetText()
+                if($this.GetDistance($this.X,$this.Y,$this.CloseBtn.X,$this.CloseBtn.Y) -le $this.CloseBtn.R){
+                    $this.Close()
+                }
             }
-        }elseif($this.GetDistance($this.X,$this.Y,$this.CloseBtn.X,$this.CloseBtn.Y) -le $this.CloseBtn.R){
-            $this.Visible = $false
+            ([System.Windows.Forms.MouseButtons]::Right){
+                $this.SetMode(1 - $this.Mode)
+                $this.Invalidate()
+            }
         }
-        $this.Invalidate()
     }
  
     # ボタンが離されたとき
     hidden MouseUp(){
         $this.Click = $false
-        #$this.Invalidate()
+        if($this.AutoNext -and $this.Modified){
+            if($this.GetDistance($this.X,$this.Y,$this.Center.X,$this.Center.Y) -le $this.BaseRadius){
+                switch($this.Mode){
+                    0{
+                        $this.SetMode(1)
+                        $this.Invalidate()
+                    }
+                    1{
+                        $this.Close()
+                    }
+                }
+            }
+        }
     }
 
     # マウスが移動したとき
@@ -340,6 +384,12 @@
 
     # マウスがコントロールの外に出たとき
     hidden MouseLeave(){
+        $this.Invalidate()
+    }
+
+    # Visibleプロパティが変更されたとき
+    hidden VisibleChanged(){
+        $this.SetMode(0)
         $this.Invalidate()
     }
 }

@@ -198,7 +198,7 @@
         $c = $this.Center
         $g = $this.Gp
         $s = $this.Bmp
-        $cell = @()
+        $cursol = @()
         # 背景
         $b = $this.Brushes.BG
         $g.FillRectangle($b,0,32,$s.Width,$s.Height - 64)
@@ -223,23 +223,17 @@
         $r = $this.BaseRadius
         $g.FillPie($this.Brushes.BASE,$c.X - $r,$c.Y - $r,$r * 2,$r * 2,0,360)
         if($this.Mode -eq 0){
-            $cell = $this.UpdateHour()
+            $cursol = $this.UpdateHour()
             # デジタル切り替え用
             $bh = $this.Brushes.SCELL
             $bm = $this.Brushes.RCELL
         }else{
-            $cell = $this.UpdateMinute()
+            $cursol = $this.UpdateMinute()
            # デジタル切り替え用
             $bh = $this.Brushes.RCELL
             $bm = $this.Brushes.SCELL
         }
-        # 選択カーソル表示
-        foreach($i in $cell){
-            $g.DrawLine($i.pen,$c.X,$c.Y,$i.point.X,$i.point.Y)
-            $g.FillPie($i.brush,$c.X - 16,$c.Y - 16,32,32,0,360)
-            $g.FillPie($i.brush,$i.point.X - $i.size,$i.point.Y - $i.size,$i.size * 2,$i.size * 2,0,360)
-            $g.DrawString($i.value,$i.font,$this.Brushes.BASE,$i.point.X,$i.point.Y,$this.Format)
-        }
+        $this.UpdateCursol($cursol)
         # デジタル部
         $d = $this.DigitalRect
         $g.FillRectangle($this.Brushes.BASE,$d.Left,$d.Top,$d.Width,$d.Height)
@@ -252,7 +246,7 @@
     # 時間入力モード
     hidden [object]UpdateHour(){
         $g = $this.Gp
-        $cell = @()
+        $cursol = @()
         $param = @{}
         for($i = 23 ; $i -ge 0 ; $i--){
             if($i -lt 12){
@@ -282,7 +276,7 @@
                     $this.SetText()
                 }
             }elseif($i -eq $this.Hour){
-                $cell += @{
+                $cursol += @{
                     point = $a
                     size = $s
                     font = $fnt
@@ -295,23 +289,23 @@
             $g.DrawString($this.ClkStr($i),$fnt,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
         }
         if($param.Count -gt 0){
-            $cell += $param
+            $cursol += $param
         }
-        return $cell
+        return $cursol
     }
 
     # 分入力モード
     hidden [object]UpdateMinute(){
         $g = $this.Gp
         $c = $this.Center
-        $cell = @()
+        $cursol = @()
         for($i = 0 ; $i -lt 60 ; $i++){
             $a = $this.GetArcPos($this.Rad($i * 6 - 90),$this.ValueRadius)
             if($i % 5 -eq 0){
                 $g.DrawString($this.ClkStr($i),$this.ClkFont,$this.Brushes.BG,$a.X,$a.Y,$this.Format)
             }
             if($i -eq $this.Minute){
-                $cell += @{
+                $cursol += @{
                     point = $a
                     size = $this.ValueSize
                     font = $this.ClkFont
@@ -324,7 +318,7 @@
         if($this.ChkInCircle($c.X,$c.Y,$this.BaseRadius)){
             $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
             $min = $this.Rad2Minute($rad)
-            $cell += @{
+            $cursol += @{
                 point = $this.GetArcPos($rad,$this.ValueRadius)
                 size = $this.ValueSize
                 font = $this.ClkFont
@@ -337,8 +331,20 @@
                 $this.SetText()
             }
         }
-        return $cell
-    }        
+        return $cursol
+    }
+
+    hidden UpdateCursol([object]$cursol){
+        $g = $this.Gp
+        $c = $this.Center
+        # 選択カーソル表示
+        foreach($i in $cursol){
+            $g.DrawLine($i.pen,$c.X,$c.Y,$i.point.X,$i.point.Y)
+            $g.FillPie($i.brush,$c.X - 16,$c.Y - 16,32,32,0,360)
+            $g.FillPie($i.brush,$i.point.X - $i.size,$i.point.Y - $i.size,$i.size * 2,$i.size * 2,0,360)
+            $g.DrawString($i.value,$i.font,$this.Brushes.BASE,$i.point.X,$i.point.Y,$this.Format)
+        }
+    }
 
     # 角度をラジアンに変換
     hidden [double] Rad([int]$deg){

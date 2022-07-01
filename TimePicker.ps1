@@ -345,7 +345,6 @@
                     }
                 }
                 $this.Invalidate()
-                $this.SetText()
                 if($this.GetDistance($this.X,$this.Y,$this.CloseBtn.X,$this.CloseBtn.Y) -le $this.CloseBtn.R){
                     $this.Close()
                 }

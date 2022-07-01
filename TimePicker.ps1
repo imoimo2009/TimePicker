@@ -192,7 +192,7 @@
         $this.Invalidate()
     }
     
-        # オーナードロー(独自描画)処理
+    # オーナードロー(独自描画)処理
     hidden OwnerDraw([System.Windows.Forms.PaintEventArgs] $e){
         $base = [System.Windows.Forms.PictureBox] $this
         $c = $this.Center
@@ -203,13 +203,12 @@
         $b = $this.Brushes.BG
         $g.FillRectangle($b,0,32,$s.Width,$s.Height - 64)
         $g.FillRectangle($b,32,0,$s.Width - 64,$s.Height)
-        $g.fillPie($b,0,0,64,64,180,90)
-        $g.fillPie($b,$s.Width - 64,0,64,64,270,90)
-        $g.fillPie($b,0,$s.Height -64,64,64,90,90)
-        $g.fillPie($b,$s.Width - 64,$s.Height - 64,64,64,0,90)
+        $g.FillPie($b,0,0,64,64,180,90)
+        $g.FillPie($b,$s.Width - 64,0,64,64,270,90)
+        $g.FillPie($b,0,$s.Height -64,64,64,90,90)
+        $g.FillPie($b,$s.Width - 64,$s.Height - 64,64,64,0,90)
         # 閉じるボタン
         $cb = $this.CloseBtn
-        $dt = $this.GetDistance($this.X,$this.Y,$cb.X,$cb.Y)
         if($this.ChkInCircle($cb.X,$cb.Y,$cb.R)){
             $b = $this.Brushes.SCLOSE
             $p = $this.Pens.SCLOSE
@@ -224,90 +223,13 @@
         $r = $this.BaseRadius
         $g.FillPie($this.Brushes.BASE,$c.X - $r,$c.Y - $r,$r * 2,$r * 2,0,360)
         if($this.Mode -eq 0){
-            # 時間入力モード
-            $param = @{}
-            for($i = 23 ; $i -ge 0 ; $i--){
-                if($i -lt 12){
-                    # 0-11時
-                    $r = $this.ValueRadius
-                    $vs = $this.ValueSize
-                    $fnt = $this.ClkFont
-                }else{
-                    # 12-23時
-                    $r = $this.ValueRadius2
-                    $vs = $this.ValueSize2
-                    $fnt = $this.ClkFont2
-                }
-                $rad = $this.Rad(($i % 12) * 30 - 90)
-                $a = $this.GetArcPos($rad,$r)
-                if($this.ChkInCircle($a.X,$a.Y,$vs)){
-                    $param = @{
-                        point = $a
-                        size = $vs
-                        font = $fnt
-                        brush = $this.Brushes.SCELL
-                        pen = $this.Pens.SLINE
-                        value = $this.ClkStr($i)
-                    }
-                    if($this.Click){
-                        $this.Hour = $i
-                        $this.SetText()
-                    }
-                }elseif($i -eq $this.Hour){
-                    $cell += @{
-                        point = $a
-                        size = $vs
-                        font = $fnt
-                        brush = $this.Brushes.RCELL
-                        pen = $this.Pens.RLINE
-                        value = $this.ClkStr($i)
-                    }
-                }
-                $g.FillPie($this.Brushes.CELL,$a.X - $vs,$a.Y - $vs,$vs * 2,$vs * 2,0,360)
-                $g.DrawString($this.ClkStr($i),$fnt,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
-            }
-            if($param.Count -gt 0){
-                $cell += $param
-            }
+            $cell = $this.UpdateHour()
             # デジタル切り替え用
             $bh = $this.Brushes.SCELL
             $bm = $this.Brushes.RCELL
         }else{
-            # 分入力モード
-            for($i = 0 ; $i -lt 60 ; $i++){
-                $a = $this.GetArcPos($this.Rad($i * 6 - 90),$this.ValueRadius)
-                if($i % 5 -eq 0){
-                    $g.DrawString($this.ClkStr($i),$this.ClkFont,$this.Brushes.BG,$a.X,$a.Y,$this.Format)
-                }
-                if($i -eq $this.Minute){
-                    $cell += @{
-                        point = $a
-                        size = $this.ValueSize
-                        font = $this.ClkFont
-                        brush = $this.Brushes.RCELL
-                        pen = $this.Pens.RLINE
-                        value = $this.ClkStr($i)
-                    }
-                }
-            }
-            $dt = $this.GetDistance($this.X,$this.Y,$c.X,$c.Y)
-            if($dt -le $this.BaseRadius){
-                $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
-                $min = $this.Rad2Minute($rad)
-                $cell += @{
-                    point = $this.GetArcPos($rad,$this.ValueRadius)
-                    size = $this.ValueSize
-                    font = $this.ClkFont
-                    brush = $this.Brushes.SCELL
-                    pen = $this.Pens.SLINE
-                    value = $this.ClkStr($min)
-                }
-                if($this.Click){
-                    $this.Minute = $min
-                    $this.SetText()
-                }
-            }
-            # デジタル切り替え用
+            $cell = $this.UpdateMinute()
+           # デジタル切り替え用
             $bh = $this.Brushes.RCELL
             $bm = $this.Brushes.SCELL
         }
@@ -326,6 +248,97 @@
         $g.DrawString($this.ClkStr($this.Minute),$base.Font,$bm,$c.X + 88,112,$this.Format)
         $base.Image = $this.Bmp
     }
+
+    # 時間入力モード
+    hidden [object]UpdateHour(){
+        $g = $this.Gp
+        $cell = @()
+        $param = @{}
+        for($i = 23 ; $i -ge 0 ; $i--){
+            if($i -lt 12){
+                # 0-11時
+                $r = $this.ValueRadius
+                $s = $this.ValueSize
+                $fnt = $this.ClkFont
+            }else{
+                # 12-23時
+                $r = $this.ValueRadius2
+                $s = $this.ValueSize2
+                $fnt = $this.ClkFont2
+            }
+            $rad = $this.Rad(($i % 12) * 30 - 90)
+            $a = $this.GetArcPos($rad,$r)
+            if($this.ChkInCircle($a.X,$a.Y,$s)){
+                $param = @{
+                    point = $a
+                    size = $s
+                    font = $fnt
+                    brush = $this.Brushes.SCELL
+                    pen = $this.Pens.SLINE
+                    value = $this.ClkStr($i)
+                }
+                if($this.Click){
+                    $this.Hour = $i
+                    $this.SetText()
+                }
+            }elseif($i -eq $this.Hour){
+                $cell += @{
+                    point = $a
+                    size = $s
+                    font = $fnt
+                    brush = $this.Brushes.RCELL
+                    pen = $this.Pens.RLINE
+                    value = $this.ClkStr($i)
+                }
+            }
+            $g.FillPie($this.Brushes.CELL,$a.X - $s,$a.Y - $s,$s * 2,$s * 2,0,360)
+            $g.DrawString($this.ClkStr($i),$fnt,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
+        }
+        if($param.Count -gt 0){
+            $cell += $param
+        }
+        return $cell
+    }
+
+    # 分入力モード
+    hidden [object]UpdateMinute(){
+        $g = $this.Gp
+        $c = $this.Center
+        $cell = @()
+        for($i = 0 ; $i -lt 60 ; $i++){
+            $a = $this.GetArcPos($this.Rad($i * 6 - 90),$this.ValueRadius)
+            if($i % 5 -eq 0){
+                $g.DrawString($this.ClkStr($i),$this.ClkFont,$this.Brushes.BG,$a.X,$a.Y,$this.Format)
+            }
+            if($i -eq $this.Minute){
+                $cell += @{
+                    point = $a
+                    size = $this.ValueSize
+                    font = $this.ClkFont
+                    brush = $this.Brushes.RCELL
+                    pen = $this.Pens.RLINE
+                    value = $this.ClkStr($i)
+                }
+            }
+        }
+        if($this.ChkInCircle($c.X,$c.Y,$this.BaseRadius)){
+            $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
+            $min = $this.Rad2Minute($rad)
+            $cell += @{
+                point = $this.GetArcPos($rad,$this.ValueRadius)
+                size = $this.ValueSize
+                font = $this.ClkFont
+                brush = $this.Brushes.SCELL
+                pen = $this.Pens.SLINE
+                value = $this.ClkStr($min)
+            }
+            if($this.Click){
+                $this.Minute = $min
+                $this.SetText()
+            }
+        }
+        return $cell
+    }        
 
     # 角度をラジアンに変換
     hidden [double] Rad([int]$deg){

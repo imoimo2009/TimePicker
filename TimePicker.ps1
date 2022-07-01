@@ -132,25 +132,85 @@
 
     }
 
-    # オーナードロー(独自描画)処理
+    # ボタンが押されたとき
+    hidden MouseDown([System.Windows.Forms.MouseEventArgs]$e){
+        switch($e.Button){
+            ([System.Windows.Forms.MouseButtons]::Left){
+                $this.Click = $true
+                if($this.ChkInRect($this.DigitalRect)){
+                    if($this.X -lt $this.Center.X){
+                        $this.SetMode(0)
+                    }else{
+                        $this.SetMode(1)
+                    }
+                }
+                $this.Invalidate()
+                if($this.GetDistance($this.X,$this.Y,$this.CloseBtn.X,$this.CloseBtn.Y) -le $this.CloseBtn.R){
+                    $this.Close()
+                }
+            }
+            ([System.Windows.Forms.MouseButtons]::Right){
+                $this.SetMode(1 - $this.Mode)
+                $this.Invalidate()
+            }
+        }
+    }
+    
+    # ボタンが離されたとき
+    hidden MouseUp(){
+        $this.Click = $false
+        if($this.AutoNext -and $this.Modified){
+            if($this.GetDistance($this.X,$this.Y,$this.Center.X,$this.Center.Y) -le $this.BaseRadius){
+                switch($this.Mode){
+                    0{
+                        $this.SetMode(1)
+                        $this.Invalidate()
+                    }
+                    1{
+                        $this.Close()
+                    }
+                }
+            }
+        }
+    }
+
+    # マウスが移動したとき
+    hidden MouseMove([System.Windows.Forms.MouseEventArgs]$e){
+        $this.X = $e.X * $this.Scale.X
+        $this.Y = $e.Y * $this.Scale.Y
+        $this.Invalidate()
+    }
+
+    # マウスがコントロールの外に出たとき
+    hidden MouseLeave(){
+        $this.Invalidate()
+    }
+
+    # Visibleプロパティが変更されたとき
+    hidden VisibleChanged(){
+        $this.SetMode(0)
+        $this.Invalidate()
+    }
+    
+        # オーナードロー(独自描画)処理
     hidden OwnerDraw([System.Windows.Forms.PaintEventArgs] $e){
         $base = [System.Windows.Forms.PictureBox] $this
         $c = $this.Center
         $g = $this.Gp
-        $rect = $this.Bmp.Size
+        $s = $this.Bmp
         $cell = @()
         # 背景
         $b = $this.Brushes.BG
-        $g.FillRectangle($b,0,32,$rect.Width,$rect.Height - 64)
-        $g.FillRectangle($b,32,0,$rect.Width - 64,$rect.Height)
+        $g.FillRectangle($b,0,32,$s.Width,$s.Height - 64)
+        $g.FillRectangle($b,32,0,$s.Width - 64,$s.Height)
         $g.fillPie($b,0,0,64,64,180,90)
-        $g.fillPie($b,$rect.Width - 64,0,64,64,270,90)
-        $g.fillPie($b,0,$rect.Height -64,64,64,90,90)
-        $g.fillPie($b,$rect.Width - 64,$rect.Height - 64,64,64,0,90)
+        $g.fillPie($b,$s.Width - 64,0,64,64,270,90)
+        $g.fillPie($b,0,$s.Height -64,64,64,90,90)
+        $g.fillPie($b,$s.Width - 64,$s.Height - 64,64,64,0,90)
         # 閉じるボタン
         $cb = $this.CloseBtn
         $dt = $this.GetDistance($this.X,$this.Y,$cb.X,$cb.Y)
-        if($dt -le $cb.R){
+        if($this.ChkInCircle($cb.X,$cb.Y,$cb.R)){
             $b = $this.Brushes.SCLOSE
             $p = $this.Pens.SCLOSE
         }else{
@@ -179,17 +239,15 @@
                     $fnt = $this.ClkFont2
                 }
                 $rad = $this.Rad(($i % 12) * 30 - 90)
-                $a = $this.GetArcPos($rad,$r,$c.X,$c.Y)
-                $dt = $this.GetDistance($this.X,$this.Y,$a.X,$a.Y)
-                if($dt -le $vs){
+                $a = $this.GetArcPos($rad,$r)
+                if($this.ChkInCircle($a.X,$a.Y,$vs)){
                     $param = @{
-                        radian = $rad
-                        radius = $r
+                        point = $a
                         size = $vs
                         font = $fnt
                         brush = $this.Brushes.SCELL
                         pen = $this.Pens.SLINE
-                        value = "{0:00}" -f $i
+                        value = $this.ClkStr($i)
                     }
                     if($this.Click){
                         $this.Hour = $i
@@ -197,18 +255,16 @@
                     }
                 }elseif($i -eq $this.Hour){
                     $cell += @{
-                        radian = $rad
-                        radius = $r
+                        point = $a
                         size = $vs
                         font = $fnt
                         brush = $this.Brushes.RCELL
                         pen = $this.Pens.RLINE
-                        value = "{0:00}" -f $i
+                        value = $this.ClkStr($i)
                     }
                 }
                 $g.FillPie($this.Brushes.CELL,$a.X - $vs,$a.Y - $vs,$vs * 2,$vs * 2,0,360)
-                $s = "{0:00}" -f $i
-                $g.DrawString($s,$fnt,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
+                $g.DrawString($this.ClkStr($i),$fnt,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
             }
             if($param.Count -gt 0){
                 $cell += $param
@@ -219,34 +275,32 @@
         }else{
             # 分入力モード
             for($i = 0 ; $i -lt 60 ; $i++){
-                $rad = $this.Rad($i * 6 - 90)
+                $a = $this.GetArcPos($this.Rad($i * 6 - 90),$this.ValueRadius)
                 if($i % 5 -eq 0){
-                    $a = $this.GetArcPos($rad,$this.ValueRadius,$c.X,$c.Y)
-                    $s = "{0:00}" -f $i
-                    $g.DrawString($s,$this.ClkFont,$this.Brushes.BG,$a.X,$a.Y,$this.Format)
+                    $g.DrawString($this.ClkStr($i),$this.ClkFont,$this.Brushes.BG,$a.X,$a.Y,$this.Format)
                 }
-            }
-            $cell += @{
-                radian = $this.Rad($this.Minute * 6 - 90)
-                radius = $this.ValueRadius
-                size = $this.ValueSize
-                font = $this.ClkFont
-                brush = $this.Brushes.RCELL
-                pen = $this.Pens.RLINE
-                value = "{0:00}" -f $this.Minute
+                if($i -eq $this.Minute){
+                    $cell += @{
+                        point = $a
+                        size = $this.ValueSize
+                        font = $this.ClkFont
+                        brush = $this.Brushes.RCELL
+                        pen = $this.Pens.RLINE
+                        value = $this.ClkStr($i)
+                    }
+                }
             }
             $dt = $this.GetDistance($this.X,$this.Y,$c.X,$c.Y)
             if($dt -le $this.BaseRadius){
                 $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
                 $min = $this.Rad2Minute($rad)
                 $cell += @{
-                    radian = $rad
-                    radius = $this.ValueRadius
+                    point = $this.GetArcPos($rad,$this.ValueRadius)
                     size = $this.ValueSize
                     font = $this.ClkFont
                     brush = $this.Brushes.SCELL
                     pen = $this.Pens.SLINE
-                    value = "{0:00}" -f $min
+                    value = $this.ClkStr($min)
                 }
                 if($this.Click){
                     $this.Minute = $min
@@ -259,21 +313,17 @@
         }
         # 選択カーソル表示
         foreach($i in $cell){
-            $a = $this.GetArcPos($i.radian,$i.radius,$c.X,$c.Y)
-            $g.DrawLine($i.pen,$c.X,$c.Y,$a.X,$a.Y)
+            $g.DrawLine($i.pen,$c.X,$c.Y,$i.point.X,$i.point.Y)
             $g.FillPie($i.brush,$c.X - 16,$c.Y - 16,32,32,0,360)
-            $vs = $i.size
-            $g.FillPie($i.brush,$a.X - $vs,$a.Y - $vs,$vs * 2,$vs * 2,0,360)
-            $g.DrawString($i.value,$i.font,$this.Brushes.BASE,$a.X,$a.Y,$this.Format)
+            $g.FillPie($i.brush,$i.point.X - $i.size,$i.point.Y - $i.size,$i.size * 2,$i.size * 2,0,360)
+            $g.DrawString($i.value,$i.font,$this.Brushes.BASE,$i.point.X,$i.point.Y,$this.Format)
         }
         # デジタル部
         $d = $this.DigitalRect
         $g.FillRectangle($this.Brushes.BASE,$d.Left,$d.Top,$d.Width,$d.Height)
-        $s = "{0:00}" -f $this.Hour
-        $g.DrawString($s,$base.Font,$bh,$c.X - 88,112,$this.Format)
+        $g.DrawString($this.ClkStr($this.Hour),$base.Font,$bh,$c.X - 88,112,$this.Format)
         $g.DrawString(":",$base.Font,$this.Brushes.RCELL,$c.X,104,$this.Format)
-        $s = "{0:00}" -f $this.Minute
-        $g.DrawString($s,$base.Font,$bm,$c.X + 88,112,$this.Format)
+        $g.DrawString($this.ClkStr($this.Minute),$base.Font,$bm,$c.X + 88,112,$this.Format)
         $base.Image = $this.Bmp
     }
 
@@ -283,9 +333,9 @@
     }
 
     # 指定角度の円弧座標を返す
-    hidden [object] GetArcPos([double]$rad,[int]$r,[int]$x,[int]$y){
-        $rx = [math]::Cos($rad) * $r + $x
-        $ry = [math]::Sin($rad) * $r + $y
+    hidden [object] GetArcPos([double]$rad,[int]$r){
+        $rx = [math]::Cos($rad) * $r + $this.Center.X
+        $ry = [math]::Sin($rad) * $r + $this.Center.Y
         return @{X = $rx ; Y = $ry}
     }
 
@@ -327,68 +377,19 @@
                 
     }
 
+    # 円領域内にマウスカーソルがあるかを判定
+    hidden [bool]ChkInCircle([int]$cx,[int]$cy,[int]$r){
+        return ($this.GetDistance($this.X,$this.Y,$cx,$cy) -lt $r)
+    }
+    # モード切替
     hidden SetMode([int]$m){
         $this.Mode = $m
         $this.Modified = $false
     }
 
-    # ボタンが押されたとき
-    hidden MouseDown([System.Windows.Forms.MouseEventArgs]$e){
-        switch($e.Button){
-            ([System.Windows.Forms.MouseButtons]::Left){
-                $this.Click = $true
-                if($this.ChkInRect($this.DigitalRect)){
-                    if($this.X -lt $this.Center.X){
-                        $this.SetMode(0)
-                    }else{
-                        $this.SetMode(1)
-                    }
-                }
-                $this.Invalidate()
-                if($this.GetDistance($this.X,$this.Y,$this.CloseBtn.X,$this.CloseBtn.Y) -le $this.CloseBtn.R){
-                    $this.Close()
-                }
-            }
-            ([System.Windows.Forms.MouseButtons]::Right){
-                $this.SetMode(1 - $this.Mode)
-                $this.Invalidate()
-            }
-        }
-    }
- 
-    # ボタンが離されたとき
-    hidden MouseUp(){
-        $this.Click = $false
-        if($this.AutoNext -and $this.Modified){
-            if($this.GetDistance($this.X,$this.Y,$this.Center.X,$this.Center.Y) -le $this.BaseRadius){
-                switch($this.Mode){
-                    0{
-                        $this.SetMode(1)
-                        $this.Invalidate()
-                    }
-                    1{
-                        $this.Close()
-                    }
-                }
-            }
-        }
+    # 時計盤文字列を返す
+    hidden [string]ClkStr([int]$c){
+        return ("{0:00}" -f $c)
     }
 
-    # マウスが移動したとき
-    hidden MouseMove([System.Windows.Forms.MouseEventArgs]$e){
-        $this.X = $e.X * $this.Scale.X
-        $this.Y = $e.Y * $this.Scale.Y
-        $this.Invalidate()
-    }
-
-    # マウスがコントロールの外に出たとき
-    hidden MouseLeave(){
-        $this.Invalidate()
-    }
-
-    # Visibleプロパティが変更されたとき
-    hidden VisibleChanged(){
-        $this.SetMode(0)
-        $this.Invalidate()
-    }
 }

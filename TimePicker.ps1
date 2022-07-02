@@ -2,8 +2,8 @@
     # プロパティ定義
     [int] $Hour                                     # 時間
     [int] $Minute                                   # 分
-    [string] $Text                                  # 時刻文字列
     [bool] $AutoNext                                # 時刻入力時、自動的に分モードにする
+    [bool] $Afternoon                               # 午後モード
     # 非表示プロパティ定義
     hidden [int] $X                                 # コントロール内のマウス座標X
     hidden [int] $Y                                 # コントロール内のマウス座標Y
@@ -25,7 +25,6 @@
     hidden [System.Drawing.Font] $ClkFont2          # 時計表示のフォント(内側)
     hidden [int] $Mode                              # 入力モード
     hidden [object]$Scale                           # 描画スケール
-    hidden [bool] $Modified                         # 変更されたかどうか
 
     # コンストラクタ
     TimePicker() : base() {
@@ -112,7 +111,7 @@
         $this.Scale = $this.GetScale($width,$height,800,960)
         $this.Mode = 0
         $this.AutoNext = $false
-        $this.Modified = $false
+        $this.Afternoon = $false
         # PictureBox初期化
         $base = [System.Windows.Forms.PictureBox] $this
         $base.Size = New-Object System.Drawing.Size($width,$height)
@@ -129,7 +128,7 @@
         $base.Add_MouseMove({$this.MouseMove($_)})
         $base.Add_MouseLeave({$this.MouseLeave()})
         $base.Add_VisibleChanged({$this.VisibleChanged()})
-
+        $base.Add_TextChanged({$this.TextChanged()})
     }
 
     # ボタンが押されたとき
@@ -158,20 +157,18 @@
     
     # ボタンが離されたとき
     hidden MouseUp(){
-        $this.Click = $false
-        if($this.AutoNext -and $this.Modified){
-            if($this.GetDistance($this.X,$this.Y,$this.Center.X,$this.Center.Y) -le $this.BaseRadius){
-                switch($this.Mode){
-                    0{
-                        $this.SetMode(1)
-                        $this.Invalidate()
-                    }
-                    1{
-                        $this.Close()
-                    }
+        if($this.Click -and $this.AutoNext -and $this.ChkInCircle($this.Center.X,$this.Center.Y,$this.BaseRadius)){
+            switch($this.Mode){
+                0{
+                    $this.SetMode(1)
+                    $this.Invalidate()
+                }
+                1{
+                    $this.Close()
                 }
             }
         }
+        $this.Click = $false
     }
 
     # マウスが移動したとき
@@ -188,8 +185,15 @@
 
     # Visibleプロパティが変更されたとき
     hidden VisibleChanged(){
-        $this.SetMode(0)
-        $this.Invalidate()
+        if($this.Visible){
+            $this.SetMode(0)
+            $this.Invalidate()
+        }
+    }
+    
+    # Textプロパティが変更されたとき
+    hidden TextChanged(){
+        $this.RestoreValues()
     }
     
     # オーナードロー(独自描画)処理
@@ -249,7 +253,7 @@
         $cursol = @()
         $param = @{}
         for($i = 23 ; $i -ge 0 ; $i--){
-            if($i -lt 12){
+            if(($i -lt 12) -xor $this.Afternoon){
                 # 0-11時
                 $r = $this.ValueRadius
                 $s = $this.ValueSize
@@ -383,8 +387,10 @@
     hidden SetText(){
         $hur = "{0:00}" -f $this.Hour
         $min = "{0:00}" -f $this.Minute
-        $this.Text = "${hur}:${min}"
-        $this.Modified = $true
+        $str = "${hur}:${min}"
+        if($str -ne $this.Text){
+            $this.Text = $str
+        }
     }
 
     # マウスカーソルが矩形範囲内にあるかを判定
@@ -403,7 +409,6 @@
     # モード切替
     hidden SetMode([int]$m){
         $this.Mode = $m
-        $this.Modified = $false
     }
 
     # 時計盤文字列を返す
@@ -411,4 +416,21 @@
         return ("{0:00}" -f $c)
     }
 
+    # 文字列から時間、分に値を代入する
+    hidden RestoreValues(){
+        $res = [regex]::Match($this.Text,"([0-9]+):([0-9]+)")
+        $ignore = $true
+        if($res.Success){
+            $time = [DateTime]"00:00"
+            if([DateTime]::TryParse($this.Text,[ref]$time)){
+                $this.Hour = [convert]::ToInt32($res.Groups[1].Value)
+                $this.Minute = [convert]::ToInt32($res.Groups[2].Value)
+                $ignore = $false
+                $this.SetText()
+            }
+        }
+        if($ignore){
+            $this.Text = "00:00"
+        }
+    }
 }

@@ -4,6 +4,7 @@
     [int] $Minute                                   # 分
     [bool] $AutoNext                                # 時刻入力時、自動的に分モードにする
     [bool] $Afternoon                               # 午後モード
+    [string] $Caption                               # キャプション
     # 非表示プロパティ定義
     hidden [int] $X                                 # コントロール内のマウス座標X
     hidden [int] $Y                                 # コントロール内のマウス座標Y
@@ -21,6 +22,7 @@
     hidden [System.Drawing.Bitmap] $Bmp             # ビットマップオブジェクト
     hidden [System.Drawing.Graphics] $Gp            # ビットマップ描画用グラフィックオブジェクト
     hidden [System.Drawing.StringFormat] $Format    # 文字列配置
+    hidden [System.Drawing.Font] $CaptionFont       # キャプションのフォント(外側)
     hidden [System.Drawing.Font] $ClkFont           # 時計表示のフォント(外側)
     hidden [System.Drawing.Font] $ClkFont2          # 時計表示のフォント(内側)
     hidden [int] $Mode                              # 入力モード
@@ -68,11 +70,14 @@
         $this.Hour = 0
         $this.Minute = 0
         $this.Text = "00:00"
+        $this.AutoNext = $false
+        $this.Afternoon = $false
+        $this.Caption = ""
         $this.X = 0
         $this.Y = 0
-        $this.Center = @{X = 400 ; Y = 560}
-        $this.DigitalRect = @{Left = 200 ; Top = 40 ; Width = 400 ; Height = 144}
-        $this.CloseBtn = @{X = 763 ; Y = 37 ; R = 27 ; M = 15}
+        $this.Center = New-Object System.Drawing.Point(400,580)
+        $this.DigitalRect = New-Object System.Drawing.Rectangle(220,90,360,120)
+        $this.CloseBtn = New-Object System.Drawing.Rectangle(720,0,79,79)
         $this.BaseRadius = 360
         $this.ValueSize = 50
         $this.ValueRadius = 292
@@ -102,6 +107,9 @@
         $this.Format = New-Object System.Drawing.StringFormat
         $this.Format.Alignment = [System.Drawing.StringAlignment]::Center
         $this.Format.LineAlignment = [System.Drawing.StringAlignment]::Center
+        $this.CaptionFont = New-Object System.Drawing.Font(
+            "ＭＳ　ゴシック",48,[System.Drawing.FontStyle]::Bold
+        )
         $this.ClkFont = New-Object System.Drawing.Font(
             "ＭＳ　ゴシック",48,[System.Drawing.FontStyle]::Bold
         )
@@ -110,8 +118,6 @@
         )
         $this.Scale = $this.GetScale($width,$height,800,960)
         $this.Mode = 0
-        $this.AutoNext = $false
-        $this.Afternoon = $false
         # PictureBox初期化
         $base = [System.Windows.Forms.PictureBox] $this
         $base.Size = New-Object System.Drawing.Size($width,$height)
@@ -144,7 +150,7 @@
                     }
                 }
                 $this.Invalidate()
-                if($this.GetDistance($this.X,$this.Y,$this.CloseBtn.X,$this.CloseBtn.Y) -le $this.CloseBtn.R){
+                if($this.ChkInRect($this.CloseBtn)){
                     $this.Close()
                 }
             }
@@ -157,7 +163,7 @@
     
     # ボタンが離されたとき
     hidden MouseUp(){
-        if($this.Click -and $this.AutoNext -and $this.ChkInCircle($this.Center.X,$this.Center.Y,$this.BaseRadius)){
+        if($this.Click -and $this.AutoNext -and $this.ChkInCircle($this.Center,$this.BaseRadius)){
             switch($this.Mode){
                 0{
                     $this.SetMode(1)
@@ -203,26 +209,23 @@
         $g = $this.Gp
         $s = $this.Bmp
         $cursol = @()
+        # キャプション
+        $g.FillRectangle($this.Brushes.CELL,0,0,$s.Width,79)
+        $g.DrawString($this.Caption,$this.CaptionFont,$this.Brushes.SCELL,$c.X,44,$this.Format)
         # 背景
-        $b = $this.Brushes.BG
-        $g.FillRectangle($b,0,32,$s.Width,$s.Height - 64)
-        $g.FillRectangle($b,32,0,$s.Width - 64,$s.Height)
-        $g.FillPie($b,0,0,64,64,180,90)
-        $g.FillPie($b,$s.Width - 64,0,64,64,270,90)
-        $g.FillPie($b,0,$s.Height -64,64,64,90,90)
-        $g.FillPie($b,$s.Width - 64,$s.Height - 64,64,64,0,90)
+        $g.FillRectangle($this.Brushes.BG,0,80,$s.Width,$s.Height)
         # 閉じるボタン
         $cb = $this.CloseBtn
-        if($this.ChkInCircle($cb.X,$cb.Y,$cb.R)){
+        if($this.ChkInRect($cb)){
             $b = $this.Brushes.SCLOSE
             $p = $this.Pens.SCLOSE
         }else{
             $b = $this.Brushes.CLOSE
             $p = $this.Pens.CLOSE
         }
-        $g.FillPie($b,$cb.X - $cb.R,$cb.Y - $cb.R,$cb.R * 2,$cb.R * 2,0,360)
-        $g.DrawLine($p,$cb.X - $cb.M,$cb.Y - $cb.M,$cb.X + $cb.M,$cb.Y + $cb.M)
-        $g.DrawLine($p,$cb.X - $cb.M,$cb.Y + $cb.M,$cb.X + $cb.M,$cb.Y - $cb.M)
+        $g.FillRectangle($b,$cb.Left,$cb.Top,$cb.Left + $cb.Width,$cb.Top + $cb.Height)
+        $g.DrawLine($p,$cb.Left + 20,$cb.Top + 20,$cb.Left + $cb.Width - 20,$cb.Top + $cb.Height - 20)
+        $g.DrawLine($p,$cb.Left + 20,$cb.Top + $cb.Height - 20,$cb.Left + $cb.Width - 20,$cb.Top + 20)
         # アナログ部
         $r = $this.BaseRadius
         $g.FillPie($this.Brushes.BASE,$c.X - $r,$c.Y - $r,$r * 2,$r * 2,0,360)
@@ -241,9 +244,9 @@
         # デジタル部
         $d = $this.DigitalRect
         $g.FillRectangle($this.Brushes.BASE,$d.Left,$d.Top,$d.Width,$d.Height)
-        $g.DrawString($this.ClkStr($this.Hour),$base.Font,$bh,$c.X - 88,112,$this.Format)
-        $g.DrawString(":",$base.Font,$this.Brushes.RCELL,$c.X,104,$this.Format)
-        $g.DrawString($this.ClkStr($this.Minute),$base.Font,$bm,$c.X + 88,112,$this.Format)
+        $g.DrawString($this.ClkStr($this.Hour),$base.Font,$bh,$c.X - 84,$d.Top + $d.Height / 2 + 8,$this.Format)
+        $g.DrawString(":",$base.Font,$this.Brushes.RCELL,$c.X,$d.Top + $d.Height / 2,$this.Format)
+        $g.DrawString($this.ClkStr($this.Minute),$base.Font,$bm,$c.X + 84,$d.Top + $d.Height / 2 + 8,$this.Format)
         $base.Image = $this.Bmp
     }
 
@@ -266,7 +269,7 @@
             }
             $rad = $this.Rad(($i % 12) * 30 - 90)
             $a = $this.GetArcPos($rad,$r)
-            if($this.ChkInCircle($a.X,$a.Y,$s)){
+            if($this.ChkInCircle($a,$s)){
                 $param = @{
                     point = $a
                     size = $s
@@ -319,7 +322,7 @@
                 }
             }
         }
-        if($this.ChkInCircle($c.X,$c.Y,$this.BaseRadius)){
+        if($this.ChkInCircle($c,$this.BaseRadius)){
             $rad = [math]::Atan2($this.Y - $c.Y,$this.X - $c.X)
             $min = $this.Rad2Minute($rad)
             $cursol += @{
@@ -394,7 +397,7 @@
     }
 
     # マウスカーソルが矩形範囲内にあるかを判定
-    hidden [bool]ChkInRect([object]$r){
+    hidden [bool]ChkInRect([System.Drawing.Rectangle]$r){
         $cx = $this.X -ge $r.Left -and $this.X -lt $r.Left + $r.Width
         $cy = $this.Y -lt $r.Top + $r.Height -and $this.Y -ge $r.Top
         $cx = $this.X -ge $r.Left -and $this.X -lt $r.Left + $r.Width
@@ -403,8 +406,8 @@
     }
 
     # 円領域内にマウスカーソルがあるかを判定
-    hidden [bool]ChkInCircle([int]$cx,[int]$cy,[int]$r){
-        return ($this.GetDistance($this.X,$this.Y,$cx,$cy) -lt $r)
+    hidden [bool]ChkInCircle([System.Drawing.Point]$p,[int]$r){
+        return ($this.GetDistance($this.X,$this.Y,$p.X,$p.Y) -lt $r)
     }
     # モード切替
     hidden SetMode([int]$m){

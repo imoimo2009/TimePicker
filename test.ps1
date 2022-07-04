@@ -1,4 +1,4 @@
-Add-Type -AssemblyName System.Windows.Forms
+﻿Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 . .\TimePicker.ps1
@@ -22,6 +22,7 @@ function Button_Click(){
 }
 
 $tp = New-Object TimePicker(0,0,400,480)
+$tp.Caption = "テストですよ"
 $tp.Visible = $false
 $tp.AutoNext = $true
 $tp.Afternoon = $true

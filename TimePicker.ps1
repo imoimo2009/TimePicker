@@ -8,9 +8,9 @@
     # 非表示プロパティ定義
     hidden [int] $X                                 # コントロール内のマウス座標X
     hidden [int] $Y                                 # コントロール内のマウス座標Y
-    hidden [object] $Center                         # 時計盤の原点
-    hidden [object] $DigitalRect                    # デジタル表示部の矩形エリア
-    hidden [object] $CloseBtn                       # 閉じるボタンのパラメータ
+    hidden [System.Drawing.Point] $Center           # 時計盤の原点
+    hidden [System.Drawing.Rectangle] $DigitalRect  # デジタル表示部の矩形エリア
+    hidden [System.Drawing.Rectangle] $CloseBtn     # 閉じるボタンのパラメータ
     hidden [int] $BaseRadius                        # 時計盤の半径
     hidden [int] $ValueSize                         # 時間の円のサイズ(外側)
     hidden [int] $ValueRadius                       # 時間表示の原点からの距離(外側)

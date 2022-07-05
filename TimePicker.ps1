@@ -228,7 +228,7 @@
             $p = $this.Pens.CLOSE
         }
         $r = [Convert]::ToInt32([double]0.75 * $cb.Width)
-        $g.FillRectangle($b,$cb.Left,$cb.Top,$cb.Left + $cb.Width,$cb.Top + $cb.Height)
+        $g.FillRectangle($b,$cb)
         $g.DrawLine($p,$cb.Left + $r,$cb.Top + $r,$cb.Left + $cb.Width - $r,$cb.Top + $cb.Height - $r)
         $g.DrawLine($p,$cb.Left + $r,$cb.Top + $cb.Height - $r,$cb.Left + $cb.Width - $r,$cb.Top + $r)
         # アナログ部
@@ -248,7 +248,7 @@
         $this.UpdateCursol($cursol)
         # デジタル部
         $d = $this.DigitalRect
-        $g.FillRectangle($this.Brushes.BASE,$d.Left,$d.Top,$d.Width,$d.Height)
+        $g.FillRectangle($this.Brushes.BASE,$d)
         $g.DrawString($this.ClkStr($this.Hour),$base.Font,$bh,$c.X - 84,$d.Top + $d.Height / 2 + 8,$this.Format)
         $g.DrawString(":",$base.Font,$this.Brushes.RCELL,$c.X,$d.Top + $d.Height / 2,$this.Format)
         $g.DrawString($this.ClkStr($this.Minute),$base.Font,$bm,$c.X + 84,$d.Top + $d.Height / 2 + 8,$this.Format)
@@ -262,12 +262,12 @@
         $param = @{}
         for($i = 23 ; $i -ge 0 ; $i--){
             if(($i -lt 12) -xor $this.Afternoon){
-                # 0-11時
+                # 外側
                 $r = $this.ValueRadius
                 $s = $this.ValueSize
                 $fnt = $this.ClkFont
             }else{
-                # 12-23時
+                # 内側
                 $r = $this.ValueRadius2
                 $s = $this.ValueSize2
                 $fnt = $this.ClkFont2
@@ -346,10 +346,10 @@
         return $cursol
     }
 
+    # 選択カーソル表示
     hidden UpdateCursol([object]$cursol){
         $g = $this.Gp
         $c = $this.Center
-        # 選択カーソル表示
         foreach($i in $cursol){
             $g.DrawLine($i.pen,$c.X,$c.Y,$i.point.X,$i.point.Y)
             $g.FillPie($i.brush,$c.X - 16,$c.Y - 16,32,32,0,360)
@@ -405,7 +405,6 @@
     hidden [bool]ChkInRect([System.Drawing.Rectangle]$r){
         $cx = $this.X -ge $r.Left -and $this.X -lt $r.Left + $r.Width
         $cy = $this.Y -lt $r.Top + $r.Height -and $this.Y -ge $r.Top
-        $cx = $this.X -ge $r.Left -and $this.X -lt $r.Left + $r.Width
         return ($cx -and $cy)
                 
     }
@@ -414,6 +413,7 @@
     hidden [bool]ChkInCircle([System.Drawing.Point]$p,[int]$r){
         return ($this.GetDistance($this.X,$this.Y,$p.X,$p.Y) -lt $r)
     }
+
     # モード切替
     hidden SetMode([int]$m){
         $this.Mode = $m

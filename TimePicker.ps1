@@ -209,11 +209,13 @@
         $g = $this.Gp
         $s = $this.Bmp
         $cursol = @()
-        # キャプション
-        $g.FillRectangle($this.Brushes.CELL,0,0,$s.Width,79)
-        $g.DrawString($this.Caption,$this.CaptionFont,$this.Brushes.SCELL,$c.X,44,$this.Format)
         # 背景
-        $g.FillRectangle($this.Brushes.BG,0,80,$s.Width,$s.Height)
+        $g.FillRectangle($this.Brushes.BG,0,0,$s.Width,$s.Height)
+        # キャプション
+        if($this.Caption -ne ""){
+            $g.FillRectangle($this.Brushes.CELL,0,0,$s.Width,79)
+            $g.DrawString($this.Caption,$this.CaptionFont,$this.Brushes.SCELL,$c.X,44,$this.Format)
+        }
         # 閉じるボタン
         $cb = $this.CloseBtn
         if($this.ChkInRect($cb)){

@@ -6,8 +6,8 @@ Androidみたいな時刻入力をPowerShellで作ってみたくてやらかし
 
 ### 時間入力モード
 
-![時間](img/image_hour.png)
+![時間](img/hour.png)
 
 ### 分数入力モード
 
-![分数](img/image_minute.png)
+![分数](img/minute.png)

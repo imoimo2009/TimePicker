@@ -186,6 +186,8 @@
 
     # マウスがコントロールの外に出たとき
     hidden MouseLeave(){
+        $this.X = 0
+        $this.Y = 0
         $this.Invalidate()
     }
 
@@ -225,9 +227,10 @@
             $b = $this.Brushes.CLOSE
             $p = $this.Pens.CLOSE
         }
+        $r = [Convert]::ToInt32([double]0.75 * $cb.Width)
         $g.FillRectangle($b,$cb.Left,$cb.Top,$cb.Left + $cb.Width,$cb.Top + $cb.Height)
-        $g.DrawLine($p,$cb.Left + 20,$cb.Top + 20,$cb.Left + $cb.Width - 20,$cb.Top + $cb.Height - 20)
-        $g.DrawLine($p,$cb.Left + 20,$cb.Top + $cb.Height - 20,$cb.Left + $cb.Width - 20,$cb.Top + 20)
+        $g.DrawLine($p,$cb.Left + $r,$cb.Top + $r,$cb.Left + $cb.Width - $r,$cb.Top + $cb.Height - $r)
+        $g.DrawLine($p,$cb.Left + $r,$cb.Top + $cb.Height - $r,$cb.Left + $cb.Width - $r,$cb.Top + $r)
         # アナログ部
         $r = $this.BaseRadius
         $g.FillPie($this.Brushes.BASE,$c.X - $r,$c.Y - $r,$r * 2,$r * 2,0,360)

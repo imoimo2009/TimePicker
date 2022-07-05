@@ -186,8 +186,10 @@
 
     # マウスがコントロールの外に出たとき
     hidden MouseLeave(){
+        # 保持しているマウス情報を初期化
         $this.X = 0
         $this.Y = 0
+        $this.Click = $false
         $this.Invalidate()
     }
 

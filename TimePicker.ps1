@@ -304,6 +304,8 @@
         }
         if($param.Count -gt 0){
             $cursol += $param
+        }else{
+            $this.Click = $false
         }
         return $cursol
     }

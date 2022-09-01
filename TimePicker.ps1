@@ -3,8 +3,8 @@
     [int] $Hour                                     # 時間
     [int] $Minute                                   # 分
     [bool] $AutoNext                                # 時刻入力時、自動的に分モードにする
-    [bool] $Afternoon                               # 午後モード
     [string] $Caption                               # キャプション
+
     # 非表示プロパティ定義
     hidden [int] $X                                 # コントロール内のマウス座標X
     hidden [int] $Y                                 # コントロール内のマウス座標Y
@@ -25,8 +25,14 @@
     hidden [System.Drawing.Font] $CaptionFont       # キャプションのフォント(外側)
     hidden [System.Drawing.Font] $ClkFont           # 時計表示のフォント(外側)
     hidden [System.Drawing.Font] $ClkFont2          # 時計表示のフォント(内側)
-    hidden [int] $Mode                              # 入力モード
     hidden [object]$Scale                           # 描画スケール
+    hidden [bool] $Afternoon                        # 午後モード
+    hidden [int] $InputMode                         # 入力モード
+
+    static [int] $ModeHour = 0
+    static [int] $ModeMinute = 1
+    static [int] $ModeMorning = 2
+    static [int] $ModeAfternoon = 4
 
     # コンストラクタ
     TimePicker() : base() {
@@ -52,6 +58,12 @@
     # コントロールを開く
     Open(){
         $this.Visible = $true
+    }
+
+    # コントロールを開く(入力モード切替)
+    Open([int]$mode){
+        $this.Visible = $true
+        $this.SetMode($mode)
     }
 
     # コントロールを閉じる
@@ -117,7 +129,7 @@
             "ＭＳ　ゴシック",36,[System.Drawing.FontStyle]::Regular
         )
         $this.Scale = $this.GetScale($width,$height,800,960)
-        $this.Mode = 0
+        $this.InputMode = [TimePicker]::ModeHour
         # PictureBox初期化
         $base = [System.Windows.Forms.PictureBox] $this
         $base.Size = New-Object System.Drawing.Size($width,$height)
@@ -137,6 +149,12 @@
         $base.Add_TextChanged({$this.TextChanged()})
     }
 
+    # モード切替
+    SetMode([int]$mode){
+        $this.InputMode = $mode -band [TimePicker]::ModeMinute
+        $this.Afternoon = (($mode -band [TimePicker]::ModeAfternoon) -ne 0)
+    }
+    
     # ボタンが押されたとき
     hidden MouseDown([System.Windows.Forms.MouseEventArgs]$e){
         switch($e.Button){
@@ -144,9 +162,9 @@
                 $this.Click = $true
                 if($this.ChkInRect($this.DigitalRect)){
                     if($this.X -lt $this.Center.X){
-                        $this.SetMode(0)
+                        $this.InputMode = [TimePicker]::ModeHour
                     }else{
-                        $this.SetMode(1)
+                        $this.InputMode = [TimePicker]::ModeMinute
                     }
                 }
                 $this.Invalidate()
@@ -155,7 +173,7 @@
                 }
             }
             ([System.Windows.Forms.MouseButtons]::Right){
-                $this.SetMode(1 - $this.Mode)
+                $this.InputMode = [TimePicker]::ModeMinute - $this.InputMode
                 $this.Invalidate()
             }
         }
@@ -164,12 +182,12 @@
     # ボタンが離されたとき
     hidden MouseUp(){
         if($this.Click -and $this.AutoNext -and $this.ChkInCircle($this.Center,$this.BaseRadius)){
-            switch($this.Mode){
-                0{
-                    $this.SetMode(1)
+            switch($this.InputMode){
+                ([TimePicker]::ModeHour){
+                    $this.InputMode = [TimePicker]::ModeMinute
                     $this.Invalidate()
                 }
-                1{
+                ([TimePicker]::ModeMinute){
                     $this.Close()
                 }
             }
@@ -196,7 +214,7 @@
     # Visibleプロパティが変更されたとき
     hidden VisibleChanged(){
         if($this.Visible){
-            $this.SetMode(0)
+            $this.InputMode = [TimePicker]::ModeHour
             $this.Invalidate()
         }
     }
@@ -236,14 +254,14 @@
         # アナログ部
         $r = $this.BaseRadius
         $g.FillPie($this.Brushes.BASE,$c.X - $r,$c.Y - $r,$r * 2,$r * 2,0,360)
-        if($this.Mode -eq 0){
+        if($this.InputMode -eq [TimePicker]::ModeHour){
             $cursol = $this.UpdateHour()
             # デジタル切り替え用
             $bh = $this.Brushes.SCELL
             $bm = $this.Brushes.RCELL
         }else{
             $cursol = $this.UpdateMinute()
-           # デジタル切り替え用
+            # デジタル切り替え用
             $bh = $this.Brushes.RCELL
             $bm = $this.Brushes.SCELL
         }
@@ -367,7 +385,7 @@
         return [math]::PI / 180 * $deg
     }
 
-    # 指定角度の円弧座標を返す
+    # 指定角度・半径の原点からの円弧座標を返す
     hidden [object] GetArcPos([double]$rad,[int]$r){
         $rx = [math]::Cos($rad) * $r + $this.Center.X
         $ry = [math]::Sin($rad) * $r + $this.Center.Y
@@ -381,7 +399,7 @@
         return [math]::Sqrt($xp + $yp)
     }
 
-    # ラジアンから分数を返す
+    # ラジアンから分を返す
     [int] Rad2Minute([double]$rad){
         $m = [convert]::ToInt32($rad / ([math]::PI * 2) * 60 + 15)
         if($m -lt 0){
@@ -416,11 +434,6 @@
     # 円領域内にマウスカーソルがあるかを判定
     hidden [bool]ChkInCircle([System.Drawing.Point]$p,[int]$r){
         return ($this.GetDistance($this.X,$this.Y,$p.X,$p.Y) -lt $r)
-    }
-
-    # モード切替
-    hidden SetMode([int]$m){
-        $this.Mode = $m
     }
 
     # 時計盤文字列を返す

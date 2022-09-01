@@ -1,4 +1,4 @@
-﻿Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 . .\TimePicker.ps1
@@ -18,14 +18,13 @@ function TimePicker_VisibleChanged([TimePicker]$own){
 
 function Button_Click(){
     $tp.Text = $tb.Text
-    $tp.Open()
+    # 分入力モードかつ午後表示モードで開く
+    $tp.Open(([TimePicker]::ModeMinute + [TimePicker]::ModeAfternoon))
 }
 
 $tp = New-Object TimePicker(0,0,400,480)
-$tp.Caption = "テストですよ"
 $tp.Visible = $false
 $tp.AutoNext = $true
-$tp.Afternoon = $true
 $tp.Add_VisibleChanged({TimePicker_VisibleChanged})
 
 $tb = New-Object System.Windows.Forms.TextBox
